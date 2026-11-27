@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">KIKO AI</string>
+    <string name="kiko_subtitle">Autonomous Holographic Assistant</string>
+    <string name="sign_in_google">Authenticate with Google</string>
+    <string name="nav_hud">HUD Core</string>
+    <string name="nav_command">Command</string>
+    <string name="nav_vision">Vision</string>
+    <string name="nav_teams">Teams</string>
+    <string name="nav_systems">Systems</string>
+    <string name="voice_activate">Activate Voice Core</string>
+    <string name="voice_listening">Listening…</string>
+    <string name="voice_speaking">Synthesizing Voice…</string>
+    <string name="vision_capture">Capture &amp; Analyze</string>
+    <string name="vision_pick_photo">Photo Picker</string>
+    <string name="vision_pick_doc">Document Scan</string>
+    <string name="permission_camera_rationale">Camera access is required for KIKO Vision real-time object and document scanning.</string>
+    <string name="permission_mic_rationale">Microphone access enables hands-free natural voice conversations and live waveform telemetry.</string>
+    <string name="permission_notif_rationale">Notification access allows KIKO Automation Team to alert you for smart reminders.</string>
+</resources>

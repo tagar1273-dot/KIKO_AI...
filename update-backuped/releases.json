@@ -1,0 +1,10 @@
+{
+  "latestVersion": "1.0.0",
+  "versionCode": 1,
+  "apkDownloadUrl": "https://updates.example.com/api/v1/updates/download/kiko-ai-v1.0.0.apk",
+  "releaseNotes": "Initial KIKO AI production build with 12 specialized teams, holographic HUD, Firebase AI Logic, and verified OTA update support.",
+  "minSupportedVersion": 1,
+  "updateType": "OPTIONAL",
+  "sha256Checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "releaseDate": "2026-11-26T00:00:00Z"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "kiko-ai-update-backend",
+  "version": "1.0.0",
+  "description": "Secure HTTPS OTA update manifest and resumable APK distribution server for KIKO AI Android.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test update-backend.test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}

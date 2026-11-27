@@ -16,6 +16,10 @@ jobs:
     name: Build KIKO AI APK
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -26,20 +30,34 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
+      - name: Locate Android SDK Manager
+        run: |
+          echo "Checking Android SDK..."
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "SDK Manager not found!"
+            exit 1
+          fi
+          echo "SDKMANAGER=$SDKMANAGER" >> $GITHUB_ENV
+          echo "$(dirname "$SDKMANAGER")" >> $GITHUB_PATH
+
+      - name: Accept Android Licenses
+        run: |
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
+
+      - name: Install Android SDK
+        run: |
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.10.2'
+          gradle-version: '9.3.1'
 
-      - name: Build Debug APK
+      - name: Build KIKO AI
         run: gradle assembleDebug --no-daemon
 
       - name: Upload APK

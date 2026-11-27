@@ -1,0 +1,205 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.preferredLanguage in ['auto', 'en', 'ur'] &&
+             data.aiProvider in ['GEMINI', 'OPENAI_BACKEND', 'CUSTOM_BACKEND', 'OFFLINE'] &&
+             data.backendEndpoint is string && data.backendEndpoint.size() <= 300 &&
+             data.backendModel is string && data.backendModel.size() <= 100 &&
+             data.voicePitch is number && data.voicePitch >= 0.5 && data.voicePitch <= 2.0 &&
+             data.voiceRate is number && data.voiceRate >= 0.5 && data.voiceRate <= 2.0 &&
+             data.continuousVoice is bool;
+    }
+
+    function isValidMemory(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.content is string && data.content.size() >= 1 && data.content.size() <= 2000 &&
+             data.category in ['FACT', 'PREFERENCE', 'PROJECT', 'CONTACT', 'PROTOCOL'] &&
+             data.pinned is bool &&
+             data.source in ['USER', 'AI_APPROVED'];
+    }
+
+    function isValidReminder(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.notes is string && data.notes.size() <= 1000 &&
+             data.dueLabel is string && data.dueLabel.size() <= 100 &&
+             data.priority in ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'] &&
+             data.triggerType in ['REMINDER', 'ROUTINE', 'AUTOMATION'] &&
+             data.completed is bool;
+    }
+
+    function isValidActivity(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.detail is string && data.detail.size() <= 2000 &&
+             data.teamId is string && data.teamId.size() >= 1 && data.teamId.size() <= 40 &&
+             data.status in ['COMPLETED', 'PENDING', 'ALERT', 'OFFLINE'];
+    }
+
+    function isValidChatMessage(data) {
+      return data.role in ['USER', 'KIKO', 'SYSTEM'] &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 12000 &&
+             data.teamId is string && data.teamId.size() >= 1 && data.teamId.size() <= 40 &&
+             data.language in ['en', 'ur', 'auto'] &&
+             data.provider is string && data.provider.size() >= 1 && data.provider.size() <= 40 &&
+             (!('codeSnippet' in data) || (data.codeSnippet is string && data.codeSnippet.size() <= 16000));
+    }
+
+    function isValidDevProposal(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.moduleName is string && data.moduleName.size() >= 1 && data.moduleName.size() <= 100 &&
+             data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 2000 &&
+             data.codePreview is string && data.codePreview.size() >= 1 && data.codePreview.size() <= 16000 &&
+             data.status in ['PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'preferredLanguage', 'aiProvider', 'backendEndpoint', 'backendModel', 'voicePitch', 'voiceRate', 'continuousVoice', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'preferredLanguage', 'aiProvider', 'backendEndpoint', 'backendModel', 'voicePitch', 'voiceRate', 'continuousVoice', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['preferredLanguage', 'aiProvider', 'backendEndpoint', 'backendModel', 'voicePitch', 'voiceRate', 'continuousVoice', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /memories/{memoryId} {
+        allow get: if isOwner(userId) && isValidId(memoryId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(memoryId) &&
+                         incoming().keys().hasAll(['title', 'content', 'category', 'pinned', 'source', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['title', 'content', 'category', 'pinned', 'source', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidMemory(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(memoryId) &&
+                         isValidMemory(incoming()) &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'category', 'pinned', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(memoryId);
+      }
+
+      match /reminders/{reminderId} {
+        allow get: if isOwner(userId) && isValidId(reminderId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(reminderId) &&
+                         incoming().keys().hasAll(['title', 'notes', 'dueLabel', 'priority', 'triggerType', 'completed', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['title', 'notes', 'dueLabel', 'priority', 'triggerType', 'completed', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidReminder(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(reminderId) &&
+                         isValidReminder(incoming()) &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'notes', 'dueLabel', 'priority', 'triggerType', 'completed', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(reminderId);
+      }
+
+      match /activities/{activityId} {
+        allow get: if isOwner(userId) && isValidId(activityId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(activityId) &&
+                         incoming().keys().hasAll(['title', 'detail', 'teamId', 'status', 'createdAt']) &&
+                         incoming().keys().hasOnly(['title', 'detail', 'teamId', 'status', 'createdAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         isValidActivity(incoming());
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(activityId);
+      }
+
+      match /chat_messages/{messageId} {
+        allow get: if isOwner(userId) && isValidId(messageId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(messageId) &&
+                         incoming().keys().hasAll(['role', 'text', 'teamId', 'language', 'provider', 'createdAt']) &&
+                         incoming().keys().hasOnly(['role', 'text', 'teamId', 'language', 'provider', 'codeSnippet', 'createdAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         isValidChatMessage(incoming());
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(messageId);
+      }
+
+      match /dev_proposals/{proposalId} {
+        allow get: if isOwner(userId) && isValidId(proposalId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(proposalId) &&
+                         incoming().keys().hasAll(['title', 'moduleName', 'summary', 'codePreview', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['title', 'moduleName', 'summary', 'codePreview', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().status == 'PENDING_APPROVAL' &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidDevProposal(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(proposalId) &&
+                         isValidDevProposal(incoming()) &&
+                         existing().status == 'PENDING_APPROVAL' &&
+                         incoming().status in ['APPROVED', 'REJECTED'] &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(proposalId);
+      }
+    }
+  }
+}

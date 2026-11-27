@@ -1,0 +1,6 @@
+{
+  "name": "KIKO AI",
+  "description": "Futuristic holographic personal AI assistant inspired by JARVIS with voice, vision, memory, agent teams, device control, and diagnostics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

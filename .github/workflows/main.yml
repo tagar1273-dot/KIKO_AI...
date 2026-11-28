@@ -21,52 +21,75 @@ jobs:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
+      # 1. Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 2. Ensure Environment Template Exists
       - name: Ensure Environment Template Exists
         run: |
-          if [ ! -f "$GITHUB_WORKSPACE/.env.example" ]; then
-            echo "# KIKO AI environment template" > "$GITHUB_WORKSPACE/.env.example"
+          if [ ! -f .env.example ]; then
+            touch .env.example
           fi
-          echo "Environment template verified"
-          ls -la "$GITHUB_WORKSPACE/.env.example"
 
+      # 3. Setup Java 17
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # 4. Locate Android SDK Manager
       - name: Locate Android SDK Manager
         run: |
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          SDKMANAGER=$(find "$ANDROID_HOME" \
+            -type f -name sdkmanager | head -n 1)
+
           if [ -z "$SDKMANAGER" ]; then
-            echo "SDK Manager not found!"
+            echo "ERROR: sdkmanager not found"
             exit 1
           fi
-          echo "SDKMANAGER=$SDKMANAGER" >> $GITHUB_ENV
-          echo "$(dirname "$SDKMANAGER")" >> $GITHUB_PATH
 
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+
+      # 5. Accept Android Licenses
       - name: Accept Android Licenses
         run: |
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
+          yes | sdkmanager --licenses || true
 
+      # 6. Install Android SDK
       - name: Install Android SDK
         run: |
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
+          sdkmanager \
             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0"
 
+      # 7. Setup Gradle 9.3.1
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
 
-      - name: Build KIKO AI
-        run: gradle assembleDebug --no-daemon
+      # 8. Generate Debug Keystore
+      - name: Generate Debug Keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$GITHUB_WORKSPACE/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
 
+      # 9. Build KIKO AI APK
+      - name: Build KIKO AI
+        run: |
+          gradle assembleDebug --no-daemon --stacktrace
+
+      # 10. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

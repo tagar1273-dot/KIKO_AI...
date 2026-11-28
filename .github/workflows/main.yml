@@ -22,15 +22,15 @@ jobs:
 
     steps:
       - name: Checkout Repository
-      
+        uses: actions/checkout@v4
+
       - name: Ensure Environment Template Exists
         run: |
           if [ ! -f "$GITHUB_WORKSPACE/.env.example" ]; then
             echo "# KIKO AI environment template" > "$GITHUB_WORKSPACE/.env.example"
           fi
-          echo "Checking environment template..."
-          ls -la "$GITHUB_WORKSPACE/.env.example
-        uses: actions/checkout@v4
+          echo "Environment template verified"
+          ls -la "$GITHUB_WORKSPACE/.env.example"
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -40,7 +40,6 @@ jobs:
 
       - name: Locate Android SDK Manager
         run: |
-          echo "Checking Android SDK..."
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)
           if [ -z "$SDKMANAGER" ]; then
             echo "SDK Manager not found!"

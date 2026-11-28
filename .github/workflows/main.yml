@@ -22,6 +22,14 @@ jobs:
 
     steps:
       - name: Checkout Repository
+      
+      - name: Ensure Environment Template Exists
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/.env.example" ]; then
+            echo "# KIKO AI environment template" > "$GITHUB_WORKSPACE/.env.example"
+          fi
+          echo "Checking environment template..."
+          ls -la "$GITHUB_WORKSPACE/.env.example
         uses: actions/checkout@v4
 
       - name: Setup Java 17
